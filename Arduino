@@ -1,0 +1,113 @@
+#include <virtuabotixRTC.h>
+//set motor pins
+const int motorOn = 8;
+const int motorForward = 9;    // MotorDirectionPin set to pin3
+const int motorBackward = 10;  // MotorDirectionPin set to pin3
+
+// this should also reset the motor if the arduino resets
+bool hasRun = false;
+
+const int motorRunTime = 600;  //in seconds
+// Creation of the Real Time Clock Object
+virtuabotixRTC myRTC(4, 3, 2);
+
+void setup() {
+  myRTC.updateTime();
+  Serial.begin(9600);
+
+  //set motor switch
+  pinMode(motorForward, OUTPUT);
+  pinMode(motorBackward, OUTPUT);
+  pinMode(motorOn, OUTPUT);
+
+  digitalWrite(motorForward, HIGH);
+  digitalWrite(motorBackward, LOW);
+
+  // Set the current date, and time in the following format:
+  // seconds, minutes, hours, day of the week, day of the month, month, year
+  //0-nowater-1-nowater-2-water-3-water-3.59.59-
+  //myRTC.setDS1302Time(0, 30, 13, 3, 3, 1, 2023);
+
+  // current time
+  Serial.println("TIME AND DATE");
+  Serial.println(myRTC.seconds);
+  Serial.println(myRTC.minutes);
+  Serial.println(myRTC.hours);
+  Serial.println(myRTC.dayofmonth);
+  Serial.println("TIME AND DATE");
+
+
+
+  if (myRTC.dayofmonth > 5) {
+    myRTC.setDS1302Time(1, 1, 1, 1, 1, 1, 1);
+  }
+}
+
+void delaySec(int secs) {
+  for (int count = 0; count < secs; count++) {
+    delay(1000);
+  }
+}
+
+void loop() {
+  // This allows for the update of variables for time or accessing the individual elements.
+  Serial.println("TIME AND DATE");
+  //delay(1000);
+  Serial.print(myRTC.seconds);
+  Serial.print(":");
+  Serial.print(myRTC.minutes);
+  Serial.print(":");
+  Serial.print(myRTC.hours);
+  Serial.print(":");
+  Serial.print(myRTC.dayofweek);
+  Serial.print(":");
+  Serial.print(myRTC.dayofmonth);
+
+  myRTC.updateTime();
+
+  //if current day > 4 reset day counter
+  if (myRTC.dayofmonth > 5) {
+    myRTC.setDS1302Time(1, 1, 1, 1, 1, 1, 1);
+  }
+
+  // if it's a water moving day set to run at start of day
+  if (myRTC.minutes == 1 && myRTC.hours == 1) {
+    if (myRTC.dayofmonth == 1 || myRTC.dayofmonth == 4) {
+      hasRun = false;
+    }
+  }
+
+  // check to see if it has run so it's not constantly looping
+  // should run when day is 0, 3, or arduino is reset
+  if (hasRun == false) {
+    //get current day
+
+    //if day 0, 1, 2, or, arduino reset
+    if (myRTC.dayofmonth == 1 || myRTC.dayofmonth == 2 || myRTC.dayofmonth == 3) {
+      digitalWrite(motorForward, HIGH);
+      digitalWrite(motorBackward, LOW);
+
+      //run for 5 dayofmonth
+      digitalWrite(motorOn, HIGH);
+      Serial.println("Motor Forward");
+      delaySec(motorRunTime);
+      digitalWrite(motorOn, LOW);
+
+      // motor has run for the time
+      hasRun = true;
+    } else if (myRTC.dayofmonth == 4 || myRTC.dayofmonth == 5)  //if day 3, or 4 remove water from pot
+    {
+      Serial.println("Motor Backward");
+      digitalWrite(motorForward, LOW);
+      digitalWrite(motorBackward, HIGH);
+
+      //run for 5 dayofmonth
+      digitalWrite(motorOn, HIGH);
+      delaySec(motorRunTime);
+      digitalWrite(motorOn, LOW);
+
+      // motor has run for the time
+      hasRun = true;
+    }
+  }
+}
